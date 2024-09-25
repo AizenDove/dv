@@ -1,12 +1,20 @@
 using UnityEngine;
+using UnityEngine.UI;  // Needed for UI components
+using System.Collections; // For coroutines
 
-public class TeleportOnCollision : MonoBehaviour
+public class TeleportWithBlink : MonoBehaviour
 {
     // Reference to the target GameObject where the player will teleport
     public GameObject teleportTarget;
 
-    // Offset to teleport player slightly above the target position to avoid falling through the ground
+    // Reference to the fade screen UI Image
+    public Image fadeScreen;
+
+    // Offset to teleport player slightly above the target position
     public float heightOffset = 1.0f;
+
+    // Time for fading duration
+    public float fadeDuration = 0.5f;
 
     // Check for a collision with the trigger
     private void OnTriggerEnter(Collider other)
@@ -14,9 +22,22 @@ public class TeleportOnCollision : MonoBehaviour
         // Check if the object entering the trigger is the VR player (use tag or name check)
         if (other.CompareTag("Player"))
         {
-            // Teleport the VR player to the target GameObject's position with an offset
-            TeleportPlayer(other.gameObject);
+            // Start the teleportation process with the blink effect
+            StartCoroutine(TeleportWithBlinkEffect(other.gameObject));
         }
+    }
+
+    // Coroutine to handle teleportation with blinking effect
+    private IEnumerator TeleportWithBlinkEffect(GameObject player)
+    {
+        // Start fading to black
+        yield return StartCoroutine(FadeToBlack());
+
+        // Teleport the player
+        TeleportPlayer(player);
+
+        // Fade back to clear
+        yield return StartCoroutine(FadeToClear());
     }
 
     // Function to teleport the player
@@ -24,13 +45,11 @@ public class TeleportOnCollision : MonoBehaviour
     {
         if (teleportTarget != null)
         {
-            // Get the target's position
+            // Get the target's position and add height offset
             Vector3 targetPosition = teleportTarget.transform.position;
-
-            // Add height offset to avoid falling through the ground
             targetPosition.y += heightOffset;
 
-            // Set the player's position to the target position with height offset
+            // Set the player's position to the target position
             player.transform.position = targetPosition;
         }
         else
@@ -38,4 +57,41 @@ public class TeleportOnCollision : MonoBehaviour
             Debug.LogWarning("Teleport target not set!");
         }
     }
+
+    // Coroutine to fade to black
+    private IEnumerator FadeToBlack()
+    {
+        float elapsedTime = 0;
+        Color color = fadeScreen.color;
+        fadeScreen.enabled = true;  // Enable the image if it was disabled
+
+        // Gradually increase the alpha value over time
+        while (elapsedTime < fadeDuration)
+        {
+            elapsedTime += Time.deltaTime;
+            color.a = Mathf.Clamp01(elapsedTime / fadeDuration);  // Fade in the alpha
+            fadeScreen.color = color;
+            yield return null;
+        }
+    }
+
+    // Coroutine to fade back to clear
+    private IEnumerator FadeToClear()
+    {
+        float elapsedTime = 0;
+        Color color = fadeScreen.color;
+
+        // Gradually decrease the alpha value over time
+        while (elapsedTime < fadeDuration)
+        {
+            elapsedTime += Time.deltaTime;
+            color.a = Mathf.Clamp01(1 - (elapsedTime / fadeDuration));  // Fade out the alpha
+            fadeScreen.color = color;
+            yield return null;
+        }
+
+        // Disable the image after fading
+        fadeScreen.enabled = false;
+    }
 }
+
